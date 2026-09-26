@@ -18,11 +18,11 @@ pnpm check          # astro check
 defina-a no ambiente do build (não no `wrangler.jsonc`).
 
 ## Estrutura (`src/`)
-- `pages/index.astro` — catálogo com filtros na URL (plataforma, situação, gênero, aprovação, ordenação, busca, paginação)
+- `pages/index.astro` — layout "Vitrine": destaque em bento (jogo mais comentado + números do catálogo), busca, abas de plataforma/situação fixas e a grade de jogos. Filtros na URL (plataforma, situação, gênero, aprovação, ordenação, busca, paginação)
 - `pages/jogos/[slug].astro` — ficha do jogo: hero + 5 seções (Básicas, PC, Online, Conteúdo, Atualizações)
 - `pages/404.astro`, `503.astro`, `sitemap.xml.ts`
-- `components/` — `SectionPanel` (seção + selo de fonte + estado vazio), `Fato`, `RequisitosCard`, `GameCard`, `CoverArt`, `FilterBar`…
-- `lib/api.ts` (cliente da API), `labels.ts` (rótulos/tons), `format.ts`; `types/api.ts` espelha os DTOs da API
+- `components/` — `SectionPanel` (seção + selo de fonte + estado vazio), `Fato`, `RequisitosCard`, `GameCard`, `CoverArt`, `Pagination`…
+- `lib/api.ts` (cliente da API), `filtro.ts` (lê filtros da URL, monta links, resumo do catálogo), `labels.ts` (rótulos/tons), `format.ts`; `types/api.ts` espelha os DTOs da API
 
 ## Regras de produto
 - Nunca inventar dado: campo ausente vira "Não informado"; seção sem dados vira "Sem informação confirmada".

@@ -5,16 +5,18 @@ interface Props {
   totalPaginas: number;
   /** parâmetros atuais da URL, preservados nos links */
   parametros: URLSearchParams;
+  /** caminho da página que usa a paginação */
+  base?: string;
 }
 
-const { pagina, totalPaginas, parametros } = Astro.props;
+const { pagina, totalPaginas, parametros, base = '/' } = Astro.props;
 
 function href(destino: number): string {
   const p = new URLSearchParams(parametros);
   if (destino <= 0) p.delete('pagina');
   else p.set('pagina', String(destino));
   const query = p.toString();
-  return query ? `/?${query}` : '/';
+  return query ? `${base}?${query}` : base;
 }
 
 const JANELA = 2;
