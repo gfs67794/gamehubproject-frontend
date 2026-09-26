@@ -1,0 +1,61 @@
+---
+import '@fontsource-variable/space-grotesk';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { SITE_DESCRIPTION, SITE_NAME } from '../consts';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string | null;
+  jsonLd?: Record<string, unknown>;
+  noindex?: boolean;
+}
+
+const { title, description = SITE_DESCRIPTION, image = null, jsonLd, noindex = false } = Astro.props;
+
+const pageTitle = title ? `${title} · ${SITE_NAME}` : `${SITE_NAME} — ficha técnica de jogos`;
+const canonical = new URL(Astro.url.pathname, Astro.url.origin).href;
+---
+
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {noindex && <meta name="robots" content="noindex" />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {image && <meta property="og:image" content={image} />}
+    <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+
+    <!-- aplica o tema salvo antes da primeira pintura, evitando o "flash" -->
+    <script is:inline>
+      try {
+        var salvo = localStorage.getItem('ghp-theme');
+        if (salvo === 'light' || salvo === 'dark') document.documentElement.dataset.theme = salvo;
+      } catch (e) {}
+    </script>
+
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+  </head>
+  <body>
+    <a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
+    <Header />
+    <main id="conteudo">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

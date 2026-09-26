@@ -1,0 +1,75 @@
+---
+import { iniciaisDe, matizDe } from '../lib/format';
+
+interface Props {
+  slug: string;
+  nome: string;
+  capaUrl: string | null;
+  /** true para a capa acima da dobra (não usa lazy-loading) */
+  prioridade?: boolean;
+}
+
+const { slug, nome, capaUrl, prioridade = false } = Astro.props;
+const matiz = matizDe(slug);
+---
+
+<div class="capa" style={`--hue:${matiz}`}>
+  {
+    capaUrl ? (
+      <img
+        src={capaUrl}
+        alt={`Capa de ${nome}`}
+        width="600"
+        height="900"
+        loading={prioridade ? 'eager' : 'lazy'}
+        decoding="async"
+        fetchpriority={prioridade ? 'high' : 'auto'}
+      />
+    ) : (
+      <div class="arte" role="img" aria-label={`Capa de ${nome} (ainda sem imagem)`}>
+        <span class="iniciais">{iniciaisDe(nome)}</span>
+        <span class="hud aviso">sem capa</span>
+      </div>
+    )
+  }
+</div>
+
+<style>
+  .capa {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: var(--panel-solid);
+  }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .arte {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 22px 22px,
+      linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 22px 22px,
+      radial-gradient(circle at 30% 20%, hsl(var(--hue) 85% 58% / 0.55), transparent 60%),
+      linear-gradient(160deg, hsl(var(--hue) 70% 26%), hsl(calc(var(--hue) + 55) 70% 14%));
+  }
+  .iniciais {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(40px, 9vw, 84px);
+    letter-spacing: -0.04em;
+    color: rgba(255, 255, 255, 0.88);
+    text-shadow: 0 0 28px hsl(var(--hue) 90% 65% / 0.7);
+  }
+  .aviso {
+    position: absolute;
+    bottom: 12px;
+    color: rgba(255, 255, 255, 0.5);
+  }
+</style>

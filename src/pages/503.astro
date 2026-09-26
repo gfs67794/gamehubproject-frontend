@@ -1,0 +1,30 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+Astro.response.status = 503;
+---
+
+<Layout title="Serviço indisponível" noindex>
+  <section class="container-x vazio">
+    <p class="hud hud--accent">Erro 503</p>
+    <h1>Não conseguimos carregar os dados agora</h1>
+    <p>A API não respondeu. Tente novamente em alguns instantes.</p>
+    <a href="javascript:location.reload()" class="btn btn--primary">Tentar de novo</a>
+  </section>
+</Layout>
+
+<style>
+  .vazio {
+    display: grid;
+    justify-items: start;
+    gap: 14px;
+    padding-block: 96px;
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+  }
+  p:not(.hud) {
+    margin: 0 0 8px;
+    color: var(--text-soft);
+  }
+</style>

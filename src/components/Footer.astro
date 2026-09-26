@@ -1,0 +1,51 @@
+---
+import { SITE_NAME } from '../consts';
+const ano = new Date().getFullYear();
+---
+
+<footer class="rodape">
+  <div class="container-x conteudo">
+    <div>
+      <p class="hud hud--accent">Como funciona</p>
+      <p class="texto">
+        Cada informação da ficha vem de uma fonte identificada e passa por validação antes de ser publicada. Quando não dá para
+        confirmar um dado, mostramos <b>“sem informação confirmada”</b> em vez de chutar.
+      </p>
+    </div>
+    <div class="base">
+      <span class="hud">© {ano} {SITE_NAME}</span>
+      <span class="hud">Dados: Steam · Wikidata · PCGamingWiki · fontes oficiais</span>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .rodape {
+    margin-top: 72px;
+    border-top: 1px solid var(--line);
+    background: linear-gradient(to bottom, transparent, var(--bg-soft));
+  }
+  .conteudo {
+    padding-block: 36px 28px;
+    display: grid;
+    gap: 28px;
+  }
+  .texto {
+    margin: 8px 0 0;
+    max-width: 68ch;
+    color: var(--text-soft);
+    font-size: 14.5px;
+  }
+  .texto b {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .base {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+</style>

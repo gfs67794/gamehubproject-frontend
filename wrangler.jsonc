@@ -1,0 +1,10 @@
+{
+  "name": "gamehubproject-frontend",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  }
+}

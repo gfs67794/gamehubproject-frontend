@@ -1,0 +1,100 @@
+---
+import type { Fonte, SecaoJogo } from '../types/api';
+import SourceBadge from './SourceBadge.astro';
+
+interface Props {
+  id: string;
+  indice: string;
+  titulo: string;
+  secao: SecaoJogo;
+  fontes: Fonte[];
+  /** true quando não há informação confirmada para a seção */
+  vazio?: boolean;
+  mensagemVazio?: string;
+}
+
+const {
+  id,
+  indice,
+  titulo,
+  secao,
+  fontes,
+  vazio = false,
+  mensagemVazio = 'Ainda não temos dados confirmados desta seção.',
+} = Astro.props;
+---
+
+<section id={id} class="secao panel frame" aria-labelledby={`${id}-titulo`}>
+  <header class="cabecalho">
+    <div>
+      <p class="hud hud--accent">{indice}</p>
+      <h2 id={`${id}-titulo`}>{titulo}</h2>
+    </div>
+    <SourceBadge secao={secao} fontes={fontes} />
+  </header>
+
+  {
+    vazio ? (
+      <div class="vazio">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M12 8v5M12 16.5v.01"></path>
+        </svg>
+        <div>
+          <p class="titulo-vazio">Sem informação confirmada</p>
+          <p class="texto-vazio">{mensagemVazio}</p>
+        </div>
+      </div>
+    ) : (
+      <div class="corpo">
+        <slot />
+      </div>
+    )
+  }
+</section>
+
+<style>
+  .secao {
+    padding: 26px;
+  }
+  .cabecalho {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px 20px;
+    margin-bottom: 22px;
+  }
+  h2 {
+    margin-top: 6px;
+    font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+    font-weight: 600;
+  }
+  .vazio {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 18px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius);
+    color: var(--muted);
+  }
+  .vazio svg {
+    flex: none;
+    margin-top: 2px;
+  }
+  .titulo-vazio {
+    margin: 0;
+    font-weight: 600;
+    color: var(--text-soft);
+  }
+  .texto-vazio {
+    margin: 2px 0 0;
+    font-size: 14px;
+  }
+  @media (max-width: 560px) {
+    .secao {
+      padding: 18px;
+    }
+  }
+</style>

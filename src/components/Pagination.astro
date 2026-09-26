@@ -1,0 +1,110 @@
+---
+interface Props {
+  /** página atual (base 0) */
+  pagina: number;
+  totalPaginas: number;
+  /** parâmetros atuais da URL, preservados nos links */
+  parametros: URLSearchParams;
+}
+
+const { pagina, totalPaginas, parametros } = Astro.props;
+
+function href(destino: number): string {
+  const p = new URLSearchParams(parametros);
+  if (destino <= 0) p.delete('pagina');
+  else p.set('pagina', String(destino));
+  const query = p.toString();
+  return query ? `/?${query}` : '/';
+}
+
+const JANELA = 2;
+const numeros: (number | null)[] = [];
+for (let i = 0; i < totalPaginas; i++) {
+  const perto = Math.abs(i - pagina) <= JANELA;
+  if (i === 0 || i === totalPaginas - 1 || perto) numeros.push(i);
+  else if (numeros.at(-1) !== null) numeros.push(null);
+}
+---
+
+{
+  totalPaginas > 1 && (
+    <nav class="paginacao" aria-label="Paginação">
+      {pagina > 0 ? (
+        <a class="passo" href={href(pagina - 1)} rel="prev">← Anterior</a>
+      ) : (
+        <span class="passo desligado">← Anterior</span>
+      )}
+      <ol>
+        {numeros.map((n) =>
+          n === null ? (
+            <li class="reticencias">…</li>
+          ) : (
+            <li>
+              <a href={href(n)} class:list={['num', { atual: n === pagina }]} aria-current={n === pagina ? 'page' : undefined}>
+                {n + 1}
+              </a>
+            </li>
+          ),
+        )}
+      </ol>
+      {pagina + 1 < totalPaginas ? (
+        <a class="passo" href={href(pagina + 1)} rel="next">Próxima →</a>
+      ) : (
+        <span class="passo desligado">Próxima →</span>
+      )}
+    </nav>
+  )
+}
+
+<style>
+  .paginacao {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 40px;
+  }
+  ol {
+    display: flex;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .num,
+  .passo {
+    display: inline-grid;
+    place-items: center;
+    height: 38px;
+    min-width: 38px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-soft);
+    transition:
+      border-color 0.2s,
+      color 0.2s;
+  }
+  a.num:hover,
+  a.passo:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+  .num.atual {
+    color: var(--on-accent);
+    border-color: transparent;
+    background: linear-gradient(100deg, var(--cyan), var(--violet));
+  }
+  .desligado {
+    opacity: 0.4;
+  }
+  .reticencias {
+    align-self: center;
+    color: var(--muted);
+    padding: 0 4px;
+  }
+</style>

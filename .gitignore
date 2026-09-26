@@ -1,0 +1,9 @@
+dist/
+.astro/
+node_modules/
+.wrangler/
+.env
+.env.production
+.dev.vars
+*.log
+.DS_Store

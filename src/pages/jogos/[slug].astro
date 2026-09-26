@@ -1,0 +1,724 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CoverArt from '../../components/CoverArt.astro';
+import SectionPanel from '../../components/SectionPanel.astro';
+import RequisitosCard from '../../components/RequisitosCard.astro';
+import Fato from '../../components/Fato.astro';
+import { ApiError, buscarJogo } from '../../lib/api';
+import { formatarData, formatarGb, formatarNumero, matizDe } from '../../lib/format';
+import {
+  CONTROLE_LABEL,
+  PLATAFORMA_LONGA,
+  STATUS_LABEL,
+  STEAM_DECK_LABEL,
+  TIPO_CONTEUDO,
+  TRI_ESTADO_LABEL,
+  TRI_ESTADO_TOM,
+  tomDaAvaliacao,
+} from '../../lib/labels';
+import { CACHE_PAGINA_PUBLICA } from '../../consts';
+import type { Conteudo, JogoDetalhe } from '../../types/api';
+
+const { slug } = Astro.params;
+
+let jogo: JogoDetalhe;
+try {
+  jogo = await buscarJogo(slug ?? '');
+} catch (erro) {
+  if (erro instanceof ApiError && erro.status === 404) return Astro.rewrite('/404');
+  Astro.response.status = 503;
+  return Astro.rewrite('/503');
+}
+Astro.response.headers.set('Cache-Control', CACHE_PAGINA_PUBLICA);
+
+const { basicas, pc, online, atualizacoes, fontes } = jogo;
+const matiz = matizDe(jogo.slug);
+
+const dataExibida = formatarData(basicas.dataLancamento) ?? basicas.lancamentoPrevisto ?? 'Data a definir';
+const tomNota = jogo.avaliacaoPercentual !== null ? tomDaAvaliacao(jogo.avaliacaoPercentual) : null;
+
+// Anel de aprovação: circunferência de um círculo de raio 34
+const CIRCUNFERENCIA = 2 * Math.PI * 34;
+const arco = jogo.avaliacaoPercentual !== null ? (jogo.avaliacaoPercentual / 100) * CIRCUNFERENCIA : 0;
+
+// Conteúdo agrupado por tipo, na ordem de exibição
+const gruposConteudo = Object.entries(
+  Object.groupBy(jogo.conteudo, (item) => item.tipo) as Partial<Record<Conteudo['tipo'], Conteudo[]>>,
+)
+  .map(([tipo, itens]) => ({ tipo: tipo as Conteudo['tipo'], itens: itens ?? [] }))
+  .sort((a, b) => TIPO_CONTEUDO[a.tipo].ordem - TIPO_CONTEUDO[b.tipo].ordem);
+
+const temPc = pc !== null;
+const temOnline = online !== null;
+const temConteudo = jogo.conteudo.length > 0;
+const temPatches = atualizacoes.historico.length > 0;
+
+const secoes = [
+  { id: 'basicas', indice: '01', rotulo: 'Básicas', preenchida: true },
+  { id: 'pc', indice: '02', rotulo: 'PC', preenchida: temPc },
+  { id: 'online', indice: '03', rotulo: 'Online', preenchida: temOnline },
+  { id: 'conteudo', indice: '04', rotulo: 'Conteúdo', preenchida: temConteudo },
+  { id: 'atualizacoes', indice: '05', rotulo: 'Atualizações', preenchida: temPatches },
+];
+
+const descricao =
+  `${jogo.nome}: requisitos de PC, modo online, DLCs e patches. ` +
+  `${basicas.desenvolvedoras.length ? `Por ${basicas.desenvolvedoras.join(', ')}. ` : ''}` +
+  `${dataExibida}.`;
+
+const jsonLd: Record<string, unknown> = {
+  '@context': 'https://schema.org',
+  '@type': 'VideoGame',
+  name: jogo.nome,
+  gamePlatform: basicas.plataformas.map((p) => PLATAFORMA_LONGA[p]),
+  ...(basicas.generos.length && { genre: basicas.generos }),
+  ...(basicas.dataLancamento && { datePublished: basicas.dataLancamento }),
+  ...(basicas.desenvolvedoras.length && { author: basicas.desenvolvedoras.map((nome) => ({ '@type': 'Organization', name: nome })) }),
+  ...(basicas.publishers.length && { publisher: basicas.publishers.map((nome) => ({ '@type': 'Organization', name: nome })) }),
+  ...(jogo.capaUrl && { image: jogo.capaUrl }),
+  ...(jogo.avaliacaoPercentual !== null &&
+    jogo.avaliacaoQuantidade && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: jogo.avaliacaoPercentual,
+        bestRating: 100,
+        worstRating: 0,
+        ratingCount: jogo.avaliacaoQuantidade,
+      },
+    }),
+};
+---
+
+<Layout title={`${jogo.nome} — requisitos, online, DLCs e patches`} description={descricao} image={jogo.capaUrl} jsonLd={jsonLd}>
+  <div class="pagina" style={`--hue:${matiz}`}>
+    <section class="hero">
+      <div class="container-x hero-grade">
+        <div class="capa-coluna">
+          <div class="capa-moldura">
+            <CoverArt slug={jogo.slug} nome={jogo.nome} capaUrl={jogo.capaUrl} prioridade />
+          </div>
+        </div>
+
+        <div class="hero-info">
+          <nav aria-label="Trilha" class="trilha hud">
+            <a href="/">Catálogo</a><span aria-hidden="true">/</span><span>{jogo.nome}</span>
+          </nav>
+
+          <div class="etiquetas">
+            <span class:list={['chip', jogo.status === 'EM_BREVE' ? 'chip--violet' : 'chip--cyan']}>{STATUS_LABEL[jogo.status]}</span>
+            {basicas.generos.slice(0, 3).map((genero) => <span class="chip">{genero}</span>)}
+          </div>
+
+          <h1>{jogo.nome}</h1>
+
+          <p class="autoria">
+            {basicas.desenvolvedoras.length > 0 && <>Por <b>{basicas.desenvolvedoras.join(', ')}</b> · </>}
+            <span class="hud">{dataExibida}</span>
+          </p>
+
+          <ul class="plataformas" aria-label="Plataformas">
+            {basicas.plataformas.map((p) => <li class="chip chip--cyan">{PLATAFORMA_LONGA[p]}</li>)}
+          </ul>
+
+          {
+            jogo.avaliacaoPercentual !== null && tomNota && (
+              <div class={`aprovacao tom-${tomNota}`}>
+                <svg viewBox="0 0 80 80" width="76" height="76" role="img" aria-label={`${jogo.avaliacaoPercentual}% de aprovação`}>
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="var(--line-strong)" stroke-width="5"></circle>
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="34"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="5"
+                    stroke-linecap="round"
+                    stroke-dasharray={`${arco} ${CIRCUNFERENCIA}`}
+                    transform="rotate(-90 40 40)"
+                  ></circle>
+                  <text x="40" y="46" text-anchor="middle" class="anel-valor">{jogo.avaliacaoPercentual}%</text>
+                </svg>
+                <div>
+                  <p class="hud">Aprovação dos jogadores</p>
+                  {jogo.avaliacaoQuantidade !== null && <p class="qtd">{formatarNumero(jogo.avaliacaoQuantidade)} avaliações</p>}
+                </div>
+              </div>
+            )
+          }
+        </div>
+      </div>
+    </section>
+
+    <div class="abas-faixa">
+      <nav class="container-x abas" aria-label="Seções da ficha">
+        {
+          secoes.map((s) => (
+            <a href={`#${s.id}`} class:list={['aba', { vazia: !s.preenchida }]} data-secao={s.id}>
+              <i>{s.indice}</i>{s.rotulo}
+            </a>
+          ))
+        }
+      </nav>
+    </div>
+
+    <div class="container-x secoes">
+      <!-- 01 · BÁSICAS -->
+      <SectionPanel id="basicas" indice="01 // Informações básicas" titulo="Informações básicas" secao="BASICAS" fontes={fontes}>
+        <dl class="fatos">
+          <Fato rotulo="Desenvolvedora" vazio={basicas.desenvolvedoras.length === 0}>{basicas.desenvolvedoras.join(', ')}</Fato>
+          <Fato rotulo="Publisher" vazio={basicas.publishers.length === 0}>{basicas.publishers.join(', ')}</Fato>
+          <Fato rotulo="Lançamento">{dataExibida}</Fato>
+          <Fato rotulo="Gênero" vazio={basicas.generos.length === 0}>
+            <span class="chips">{basicas.generos.map((g) => <span class="chip">{g}</span>)}</span>
+          </Fato>
+          <Fato rotulo="Franquia" vazio={!basicas.franquia}>{basicas.franquia}</Fato>
+          <Fato rotulo="Engine" vazio={!basicas.engine}>{basicas.engine}</Fato>
+          <Fato rotulo="Plataformas">
+            <span class="chips">{basicas.plataformas.map((p) => <span class="chip chip--cyan">{PLATAFORMA_LONGA[p]}</span>)}</span>
+          </Fato>
+        </dl>
+      </SectionPanel>
+
+      <!-- 02 · PC -->
+      <SectionPanel
+        id="pc"
+        indice="02 // PC"
+        titulo="Requisitos e compatibilidade no PC"
+        secao="PC"
+        fontes={fontes}
+        vazio={!temPc}
+        mensagemVazio={basicas.plataformas.includes('PC')
+          ? 'Os requisitos deste jogo ainda não foram confirmados em fonte confiável.'
+          : 'Este jogo não está anunciado para PC.'}
+      >
+        {
+          pc && (
+            <>
+              <div class="requisitos">
+                <RequisitosCard nivel="Mínimos" requisito={pc.requisitoMinimo} />
+                <RequisitosCard nivel="Recomendados" requisito={pc.requisitoRecomendado} destaque />
+              </div>
+              <dl class="fatos">
+                <Fato rotulo="Tamanho da instalação" vazio={pc.tamanhoInstalacaoGb === null}>
+                  {pc.tamanhoInstalacaoGb !== null && formatarGb(pc.tamanhoInstalacaoGb)}
+                </Fato>
+                <Fato rotulo="Suporte a controle" vazio={!pc.suporteControle}>
+                  {pc.suporteControle && <span class={`chip tom-${CONTROLE_LABEL[pc.suporteControle].tom}`}>{CONTROLE_LABEL[pc.suporteControle].texto}</span>}
+                </Fato>
+                <Fato rotulo="Steam Deck" vazio={!pc.steamDeck}>
+                  {pc.steamDeck && <span class={`chip tom-${STEAM_DECK_LABEL[pc.steamDeck].tom}`}>{STEAM_DECK_LABEL[pc.steamDeck].texto}</span>}
+                </Fato>
+                <Fato rotulo="Tecnologias gráficas" vazio={!pc.tecnologiasGraficas?.length}>
+                  <span class="chips">{pc.tecnologiasGraficas?.map((t) => <span class="chip chip--violet">{t}</span>)}</span>
+                </Fato>
+              </dl>
+            </>
+          )
+        }
+      </SectionPanel>
+
+      <!-- 03 · ONLINE -->
+      <SectionPanel
+        id="online"
+        indice="03 // Online"
+        titulo="Multiplayer e online"
+        secao="ONLINE"
+        fontes={fontes}
+        vazio={!temOnline}
+        mensagemVazio="Não encontramos dados confirmados sobre o modo online deste jogo."
+      >
+        {
+          online && (
+            <dl class="fatos">
+              <Fato rotulo="Multiplayer" vazio={online.multiplayer === null}>
+                <span class={`chip tom-${online.multiplayer ? 'ok' : 'ruim'}`}>{online.multiplayer ? 'Sim' : 'Não'}</span>
+              </Fato>
+              <Fato rotulo="Número de jogadores" vazio={online.jogadoresMax === null}>
+                {online.jogadoresMax !== null && `Até ${online.jogadoresMax}`}
+              </Fato>
+              <Fato rotulo="Crossplay" vazio={!online.crossplay}>
+                {online.crossplay && <span class={`chip tom-${TRI_ESTADO_TOM[online.crossplay]}`}>{TRI_ESTADO_LABEL[online.crossplay]}</span>}
+              </Fato>
+              <Fato rotulo="Cross-save" vazio={!online.crossSave}>
+                {online.crossSave && <span class={`chip tom-${TRI_ESTADO_TOM[online.crossSave]}`}>{TRI_ESTADO_LABEL[online.crossSave]}</span>}
+              </Fato>
+              <Fato rotulo="Servidores" vazio={!online.servidores}>{online.servidores}</Fato>
+              <Fato rotulo="Modos de jogo" vazio={!online.modos?.length}>
+                <span class="chips">{online.modos?.map((m) => <span class="chip">{m}</span>)}</span>
+              </Fato>
+            </dl>
+          )
+        }
+      </SectionPanel>
+
+      <!-- 04 · CONTEÚDO -->
+      <SectionPanel
+        id="conteudo"
+        indice="04 // Conteúdo"
+        titulo="DLCs, edições e roadmap"
+        secao="CONTEUDO"
+        fontes={fontes}
+        vazio={!temConteudo}
+        mensagemVazio="Nenhum DLC, edição ou roadmap oficial confirmado até agora."
+      >
+        {
+          gruposConteudo.map((grupo) => (
+            <div class="grupo">
+              <h3 class="hud">{TIPO_CONTEUDO[grupo.tipo].plural}</h3>
+              <ul class="itens">
+                {grupo.itens.map((item) => (
+                  <li class="item">
+                    <div>
+                      <p class="item-nome">
+                        {item.urlFonte ? <a href={item.urlFonte} target="_blank" rel="noopener noreferrer">{item.nome}</a> : item.nome}
+                      </p>
+                      {item.descricao && <p class="item-desc">{item.descricao}</p>}
+                    </div>
+                    {formatarData(item.dataLancamento) && <span class="chip">{formatarData(item.dataLancamento)}</span>}
+                  </li>
+                ))}
+              </ul>
+              {grupo.tipo === 'ROADMAP' && <p class="nota">Só exibimos roadmaps publicados oficialmente pela desenvolvedora. Datas podem mudar.</p>}
+            </div>
+          ))
+        }
+      </SectionPanel>
+
+      <!-- 05 · ATUALIZAÇÕES -->
+      <SectionPanel
+        id="atualizacoes"
+        indice="05 // Atualizações"
+        titulo="Patches e atualizações"
+        secao="ATUALIZACOES"
+        fontes={fontes}
+        vazio={!temPatches}
+        mensagemVazio="Nenhum patch publicado pela desenvolvedora foi registrado ainda."
+      >
+        <dl class="fatos resumo-patches">
+          <Fato rotulo="Versão atual" vazio={!atualizacoes.versaoAtual}>
+            <span class="mono">{atualizacoes.versaoAtual}</span>
+          </Fato>
+          <Fato rotulo="Último patch" vazio={!atualizacoes.ultimoPatch}>
+            {atualizacoes.ultimoPatch && formatarData(atualizacoes.ultimoPatch.dataPublicacao)}
+          </Fato>
+          <Fato rotulo="Patches registrados">{atualizacoes.historico.length}</Fato>
+        </dl>
+
+        <ol class="linha-tempo">
+          {
+            atualizacoes.historico.map((patch, indice) => (
+              <li>
+                <details open={indice === 0}>
+                  <summary>
+                    <span class="chip chip--cyan mono">{patch.versao ?? 's/ versão'}</span>
+                    <span class="patch-titulo">{patch.titulo}</span>
+                    <span class="hud">{formatarData(patch.dataPublicacao)}</span>
+                  </summary>
+                  <div class="patch-corpo">
+                    {patch.mudancas.length > 0 && (
+                      <div>
+                        <h4 class="hud">Principais mudanças</h4>
+                        <ul class="lista lista--mudanca">{patch.mudancas.map((t) => <li>{t}</li>)}</ul>
+                      </div>
+                    )}
+                    {patch.correcoes.length > 0 && (
+                      <div>
+                        <h4 class="hud">Correções</h4>
+                        <ul class="lista lista--correcao">{patch.correcoes.map((t) => <li>{t}</li>)}</ul>
+                      </div>
+                    )}
+                    {patch.problemasConhecidos.length > 0 && (
+                      <div>
+                        <h4 class="hud">Problemas conhecidos</h4>
+                        <ul class="lista lista--problema">{patch.problemasConhecidos.map((t) => <li>{t}</li>)}</ul>
+                      </div>
+                    )}
+                    {!patch.mudancas.length && !patch.correcoes.length && !patch.problemasConhecidos.length && (
+                      <p class="nota">A desenvolvedora não detalhou este patch.</p>
+                    )}
+                    {patch.urlFonte && (
+                      <p class="nota"><a href={patch.urlFonte} target="_blank" rel="noopener noreferrer">Ver nota oficial ↗</a></p>
+                    )}
+                  </div>
+                </details>
+              </li>
+            ))
+          }
+        </ol>
+      </SectionPanel>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .pagina {
+    --tinta: hsl(var(--hue) 90% 62%);
+  }
+
+  /* ── Hero ── */
+  .hero {
+    position: relative;
+    padding-block: 36px 40px;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: -40% -10% auto -10%;
+    height: 90%;
+    background: radial-gradient(ellipse 50% 60% at 25% 40%, hsl(var(--hue) 90% 55% / 0.22), transparent 70%);
+    pointer-events: none;
+  }
+  .hero-grade {
+    position: relative;
+    display: grid;
+    gap: 28px;
+    grid-template-columns: minmax(150px, 240px) 1fr;
+    align-items: start;
+  }
+  .capa-moldura {
+    border-radius: calc(var(--radius) + 4px);
+    padding: 4px;
+    background: linear-gradient(160deg, var(--tinta), transparent 55%, var(--violet));
+    box-shadow: 0 24px 60px -24px var(--tinta);
+  }
+  .hero-info {
+    display: grid;
+    gap: 16px;
+    align-content: start;
+    min-width: 0;
+  }
+  .trilha {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .trilha a:hover {
+    color: var(--cyan);
+  }
+  .etiquetas,
+  .plataformas,
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.6rem);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  .autoria {
+    margin: 0;
+    color: var(--text-soft);
+  }
+  .autoria b {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .aprovacao {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: fit-content;
+    padding: 10px 18px 10px 12px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .aprovacao svg {
+    filter: drop-shadow(0 0 8px var(--tom));
+  }
+  .anel-valor {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 19px;
+    fill: var(--text);
+  }
+  .aprovacao p {
+    margin: 0;
+  }
+  .qtd {
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  /* ── Abas de seção (fixas sob o header) ── */
+  .abas-faixa {
+    position: sticky;
+    top: 64px;
+    z-index: 40;
+    background: var(--header-bg);
+    backdrop-filter: blur(16px) saturate(1.4);
+    border-block: 1px solid var(--line);
+  }
+  .abas {
+    display: flex;
+    gap: 6px;
+    padding-block: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .abas::-webkit-scrollbar {
+    display: none;
+  }
+  .aba {
+    flex: none;
+    display: inline-flex;
+    gap: 8px;
+    align-items: baseline;
+    padding: 6px 13px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-soft);
+    transition: all 0.2s;
+  }
+  .aba i {
+    font-style: normal;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--cyan);
+  }
+  .aba:hover {
+    color: var(--text);
+    background: var(--panel-hover);
+  }
+  .aba.vazia {
+    opacity: 0.55;
+  }
+  .aba.ativa {
+    color: var(--text);
+    border-color: color-mix(in srgb, var(--cyan) 55%, transparent);
+    background: color-mix(in srgb, var(--cyan) 10%, transparent);
+  }
+
+  /* ── Seções ── */
+  .secoes {
+    display: grid;
+    gap: 28px;
+    padding-block: 32px 0;
+  }
+  .fatos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+    margin: 0;
+  }
+  .requisitos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .mono {
+    font-family: var(--font-mono);
+  }
+
+  .grupo + .grupo {
+    margin-top: 26px;
+  }
+  .grupo h3 {
+    margin: 0 0 12px;
+    color: var(--cyan);
+  }
+  .itens {
+    display: grid;
+    gap: 10px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .item-nome {
+    margin: 0;
+    font-weight: 600;
+  }
+  .item-nome a:hover {
+    color: var(--cyan);
+    text-decoration: underline;
+  }
+  .item-desc {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: var(--text-soft);
+  }
+  .nota {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .nota a {
+    color: var(--cyan);
+  }
+  .nota a:hover {
+    text-decoration: underline;
+  }
+
+  /* ── Linha do tempo de patches ── */
+  .resumo-patches {
+    margin-bottom: 22px;
+  }
+  .linha-tempo {
+    position: relative;
+    display: grid;
+    gap: 14px;
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 26px;
+  }
+  .linha-tempo::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--cyan), var(--violet), transparent);
+  }
+  .linha-tempo > li {
+    position: relative;
+  }
+  .linha-tempo > li::before {
+    content: '';
+    position: absolute;
+    left: -25px;
+    top: 17px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--cyan);
+    box-shadow: 0 0 10px var(--cyan);
+  }
+  details {
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--panel);
+  }
+  details[open] {
+    border-color: color-mix(in srgb, var(--cyan) 35%, var(--line));
+  }
+  summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  summary::after {
+    content: '＋';
+    margin-left: auto;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  details[open] summary::after {
+    content: '－';
+    color: var(--cyan);
+  }
+  .patch-titulo {
+    font-weight: 600;
+    flex: 1 1 220px;
+  }
+  .patch-corpo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    padding: 4px 18px 18px;
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+  }
+  .patch-corpo .nota {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+  .patch-corpo h4 {
+    margin: 0 0 10px;
+  }
+  .lista {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 14.5px;
+    color: var(--text-soft);
+  }
+  .lista li {
+    position: relative;
+    padding-left: 18px;
+  }
+  .lista li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    background: var(--marca);
+    box-shadow: 0 0 8px var(--marca);
+  }
+  .lista--mudanca {
+    --marca: var(--cyan);
+  }
+  .lista--correcao {
+    --marca: var(--ok);
+  }
+  .lista--problema {
+    --marca: var(--aviso);
+  }
+
+  @media (max-width: 560px) {
+    .fatos {
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+  }
+  @media (max-width: 720px) {
+    .hero-grade {
+      grid-template-columns: 1fr;
+    }
+    .capa-coluna {
+      max-width: 200px;
+    }
+  }
+</style>
+
+<script>
+  // Destaca na barra de abas a seção que está na tela.
+  const abas = new Map<string, HTMLElement>();
+  document.querySelectorAll<HTMLElement>('.aba').forEach((aba) => abas.set(aba.dataset.secao ?? '', aba));
+
+  const observador = new IntersectionObserver(
+    (entradas) => {
+      for (const entrada of entradas) {
+        if (!entrada.isIntersecting) continue;
+        abas.forEach((aba, id) => aba.classList.toggle('ativa', id === entrada.target.id));
+      }
+    },
+    { rootMargin: '-140px 0px -60% 0px' },
+  );
+  abas.forEach((_, id) => {
+    const secao = document.getElementById(id);
+    if (secao) observador.observe(secao);
+  });
+</script>

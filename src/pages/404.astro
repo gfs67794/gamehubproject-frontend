@@ -1,0 +1,30 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+Astro.response.status = 404;
+---
+
+<Layout title="Página não encontrada" noindex>
+  <section class="container-x vazio">
+    <p class="hud hud--accent">Erro 404</p>
+    <h1>Esse jogo não está no catálogo</h1>
+    <p>O endereço pode estar errado ou o jogo ainda não foi publicado.</p>
+    <a href="/" class="btn btn--primary">Ver o catálogo</a>
+  </section>
+</Layout>
+
+<style>
+  .vazio {
+    display: grid;
+    justify-items: start;
+    gap: 14px;
+    padding-block: 96px;
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+  }
+  p:not(.hud) {
+    margin: 0 0 8px;
+    color: var(--text-soft);
+  }
+</style>

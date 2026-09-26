@@ -1,0 +1,41 @@
+---
+interface Props {
+  rotulo: string;
+  /** true quando o dado não foi informado: mostra um traço discreto em vez de inventar valor */
+  vazio?: boolean;
+}
+
+const { rotulo, vazio = false } = Astro.props;
+---
+
+<div class="fato">
+  <dt class="hud">{rotulo}</dt>
+  <dd>
+    {vazio ? <span class="nada">Não informado</span> : <slot />}
+  </dd>
+</div>
+
+<style>
+  .fato {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--panel);
+    min-width: 0;
+  }
+  dd {
+    margin: 0;
+    font-size: 15.5px;
+    font-weight: 500;
+    color: var(--text);
+    overflow-wrap: anywhere;
+  }
+  .nada {
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 14px;
+  }
+</style>

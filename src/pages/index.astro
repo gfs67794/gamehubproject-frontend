@@ -1,0 +1,196 @@
+---
+import Layout from '../layouts/Layout.astro';
+import GameCard from '../components/GameCard.astro';
+import FilterBar from '../components/FilterBar.astro';
+import Pagination from '../components/Pagination.astro';
+import { listarGeneros, listarJogos } from '../lib/api';
+import { inteiroOuPadrao } from '../lib/format';
+import { AVALIACOES_MINIMAS, ORDENACOES, PLATAFORMAS } from '../lib/labels';
+import { CACHE_PAGINA_PUBLICA } from '../consts';
+import type { FiltroListagem, Ordenacao, Plataforma, StatusJogo } from '../types/api';
+
+const params = Astro.url.searchParams;
+
+// Só repassa à API valores conhecidos; qualquer outra coisa na URL é ignorada.
+const plataforma = PLATAFORMAS.find((p) => p === params.get('plataforma')) as Plataforma | undefined;
+const status = (['LANCADO', 'EM_BREVE'] as StatusJogo[]).find((s) => s === params.get('status'));
+const ordenacao = ORDENACOES.find((o) => o.valor === params.get('ordenacao'))?.valor as Ordenacao | undefined;
+const avaliacaoMinima = AVALIACOES_MINIMAS.find((a) => String(a) === params.get('avaliacaoMinima'));
+
+const filtro: FiltroListagem = {
+  pagina: inteiroOuPadrao(params.get('pagina'), 0),
+  tamanho: 24,
+  busca: params.get('busca')?.trim().slice(0, 80) || undefined,
+  plataforma,
+  status,
+  genero: params.get('genero')?.slice(0, 60) || undefined,
+  avaliacaoMinima,
+  ordenacao,
+};
+
+let resultado = null;
+let generos: string[] = [];
+let erro = false;
+try {
+  [resultado, generos] = await Promise.all([listarJogos(filtro), listarGeneros()]);
+} catch {
+  erro = true;
+}
+
+if (erro) Astro.response.status = 503;
+else Astro.response.headers.set('Cache-Control', CACHE_PAGINA_PUBLICA);
+
+const total = resultado?.totalElementos ?? 0;
+const temFiltro = Boolean(filtro.busca || plataforma || status || filtro.genero || avaliacaoMinima);
+const paginaAtual = resultado?.pagina ?? 0;
+
+const titulo = temFiltro ? 'Catálogo filtrado' : undefined;
+---
+
+<Layout title={titulo} noindex={temFiltro || paginaAtual > 0}>
+  <section class="hero container-x">
+    <p class="hud hud--accent">Ficha técnica · lançamentos de 2026</p>
+    <h1>
+      Tudo sobre cada jogo,<br />
+      <span class="grad-text">num só lugar.</span>
+    </h1>
+    <p class="lead">
+      Requisitos de PC, modo online, DLCs e patches de jogos bem avaliados e muito comentados, em PC e consoles. Só publicamos o
+      que dá para confirmar em fonte confiável.
+    </p>
+    <ol class="secoes" aria-label="O que tem em cada ficha">
+      <li><i>01</i> Básicas</li>
+      <li><i>02</i> PC</li>
+      <li><i>03</i> Online</li>
+      <li><i>04</i> Conteúdo</li>
+      <li><i>05</i> Atualizações</li>
+    </ol>
+  </section>
+
+  <section class="container-x catalogo" aria-labelledby="titulo-catalogo">
+    <FilterBar filtro={filtro} generos={generos} />
+
+    <div class="cabecalho">
+      <h2 id="titulo-catalogo" class="hud">
+        {erro ? 'Catálogo indisponível' : `${total} ${total === 1 ? 'jogo encontrado' : 'jogos encontrados'}`}
+      </h2>
+    </div>
+
+    {
+      erro ? (
+        <div class="estado panel frame">
+          <p class="hud hud--accent">Erro 503</p>
+          <h3>Não conseguimos carregar o catálogo agora</h3>
+          <p>A API não respondeu. Tente de novo em instantes.</p>
+          <a href={Astro.url.pathname + Astro.url.search} class="btn btn--primary">Tentar de novo</a>
+        </div>
+      ) : resultado && resultado.conteudo.length > 0 ? (
+        <>
+          <ul class="grade">
+            {resultado.conteudo.map((jogo, indice) => (
+              <li>
+                <GameCard jogo={jogo} prioridade={indice < 4} />
+              </li>
+            ))}
+          </ul>
+          <Pagination pagina={paginaAtual} totalPaginas={resultado.totalPaginas} parametros={params} />
+        </>
+      ) : (
+        <div class="estado panel frame">
+          <p class="hud hud--accent">Nenhum resultado</p>
+          <h3>Nenhum jogo com esses filtros</h3>
+          <p>Tente outra plataforma, remova o gênero ou busque por outro nome.</p>
+          <a href="/" class="btn">Limpar filtros</a>
+        </div>
+      )
+    }
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    padding-block: 56px 36px;
+  }
+  h1 {
+    font-size: clamp(2.3rem, 6.2vw, 4.4rem);
+    font-weight: 700;
+    margin-top: 14px;
+  }
+  .lead {
+    max-width: 62ch;
+    margin: 20px 0 0;
+    font-size: clamp(1rem, 1.6vw, 1.15rem);
+    color: var(--text-soft);
+  }
+  .secoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 28px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .secoes li {
+    display: inline-flex;
+    gap: 8px;
+    align-items: baseline;
+    padding: 5px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-soft);
+  }
+  .secoes i {
+    font-style: normal;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--cyan);
+  }
+  .catalogo {
+    display: grid;
+    gap: 22px;
+  }
+  .cabecalho h2 {
+    margin: 0;
+    font-weight: 500;
+  }
+  .grade {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  /* cards de uma mesma linha com a mesma altura */
+  .grade > li {
+    display: flex;
+  }
+  .grade :global(.card) {
+    flex: 1;
+  }
+  @media (min-width: 900px) {
+    .grade {
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 24px;
+    }
+  }
+  .estado {
+    display: grid;
+    justify-items: start;
+    gap: 10px;
+    padding: 36px;
+  }
+  .estado h3 {
+    font-size: 1.4rem;
+  }
+  .estado p {
+    margin: 0;
+  }
+  .estado p:not(.hud) {
+    color: var(--text-soft);
+    margin-bottom: 8px;
+  }
+</style>

@@ -1,0 +1,63 @@
+---
+import type { Fonte, SecaoJogo } from '../types/api';
+import { formatarData } from '../lib/format';
+import { FONTE_LABEL } from '../lib/labels';
+
+interface Props {
+  secao: SecaoJogo;
+  fontes: Fonte[];
+}
+
+const { secao, fontes } = Astro.props;
+
+const daSecao = fontes.filter((f) => f.secao === secao);
+const nomes = [...new Set(daSecao.map((f) => FONTE_LABEL[f.fonte]))];
+const atualizadoEm = formatarData(daSecao.map((f) => f.coletadoEm).sort().at(-1));
+const url = daSecao.find((f) => f.url)?.url ?? null;
+---
+
+{
+  nomes.length > 0 && (
+    <p class="fonte">
+      <i aria-hidden="true"></i>
+      <span class="hud">Fonte</span>
+      {url ? (
+        <a href={url} target="_blank" rel="noopener noreferrer">{nomes.join(' + ')}</a>
+      ) : (
+        <b>{nomes.join(' + ')}</b>
+      )}
+      {atualizadoEm && <span class="hud">· {atualizadoEm}</span>}
+    </p>
+  )
+}
+
+<style>
+  .fonte {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    font-size: 12.5px;
+  }
+  i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+  }
+  b,
+  a {
+    font-weight: 600;
+    color: var(--text);
+  }
+  a:hover {
+    color: var(--cyan);
+    text-decoration: underline;
+  }
+</style>

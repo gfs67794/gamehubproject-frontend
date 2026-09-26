@@ -1,0 +1,96 @@
+---
+import type { RequisitoPc } from '../types/api';
+
+interface Props {
+  nivel: string;
+  requisito: RequisitoPc | null;
+  destaque?: boolean;
+}
+
+const { nivel, requisito, destaque = false } = Astro.props;
+
+const linhas = requisito
+  ? [
+      ['SO', requisito.sistemaOperacional],
+      ['Processador', requisito.processador],
+      ['Placa de vídeo', requisito.placaDeVideo],
+      ['Memória', requisito.memoriaGb !== null ? `${requisito.memoriaGb} GB de RAM` : null],
+      ['Armazenamento', requisito.armazenamentoGb !== null ? `${requisito.armazenamentoGb} GB livres` : null],
+      ['Observações', requisito.observacoes],
+    ].filter((linha): linha is [string, string] => Boolean(linha[1]))
+  : [];
+---
+
+<article class:list={['req', { destaque }]}>
+  <h3 class="hud">{nivel}</h3>
+  {
+    linhas.length > 0 ? (
+      <dl>
+        {linhas.map(([rotulo, valor]) => (
+          <div>
+            <dt>{rotulo}</dt>
+            <dd>{valor}</dd>
+          </div>
+        ))}
+      </dl>
+    ) : (
+      <p class="nada">Não informado pela fonte.</p>
+    )
+  }
+</article>
+
+<style>
+  .req {
+    padding: 18px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .req.destaque {
+    border-color: color-mix(in srgb, var(--cyan) 40%, transparent);
+    background: color-mix(in srgb, var(--cyan) 5%, var(--panel));
+  }
+  h3 {
+    margin: 0 0 14px;
+    font-family: var(--font-mono);
+  }
+  .destaque h3 {
+    color: var(--cyan);
+  }
+  dl {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+  }
+  dl div {
+    display: grid;
+    grid-template-columns: 112px 1fr;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  dl div:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+  dt {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  dd {
+    margin: 0;
+    font-size: 14.5px;
+    color: var(--text);
+  }
+  .nada {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  @media (max-width: 420px) {
+    dl div {
+      grid-template-columns: 1fr;
+      gap: 2px;
+    }
+  }
+</style>

@@ -1,0 +1,180 @@
+---
+const caminho = Astro.url.pathname;
+const status = Astro.url.searchParams.get('status');
+
+const links = [
+  { href: '/', rotulo: 'Catálogo', ativo: caminho === '/' && !status },
+  { href: '/?status=EM_BREVE', rotulo: 'Em breve', ativo: caminho === '/' && status === 'EM_BREVE' },
+  { href: '/?status=LANCADO', rotulo: 'Lançados', ativo: caminho === '/' && status === 'LANCADO' },
+];
+---
+
+<header class="topo">
+  <div class="container-x barra">
+    <a href="/" class="logo" aria-label="GameHub Project — página inicial">
+      <svg viewBox="0 0 64 64" width="30" height="30" aria-hidden="true">
+        <defs>
+          <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="var(--cyan)"></stop>
+            <stop offset="1" stop-color="var(--violet)"></stop>
+          </linearGradient>
+        </defs>
+        <path d="M32 6 54 19v26L32 58 10 45V19z" fill="none" stroke="url(#logo-g)" stroke-width="4.5" stroke-linejoin="round"></path>
+        <path d="M23 32h18m-9-9v18" stroke="url(#logo-g)" stroke-width="4.5" stroke-linecap="round"></path>
+      </svg>
+      <span class="marca"><b>GAMEHUB</b><i>project</i></span>
+    </a>
+
+    <nav class="nav" aria-label="Principal">
+      {
+        links.map((link) => (
+          <a href={link.href} class:list={['nav-link', { ativo: link.ativo }]} aria-current={link.ativo ? 'page' : undefined}>
+            {link.rotulo}
+          </a>
+        ))
+      }
+    </nav>
+
+    <button type="button" class="tema" id="alternar-tema" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+      <svg class="icone-sol" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.5"></circle>
+        <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"></path>
+      </svg>
+      <svg class="icone-lua" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"></path>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<style>
+  .topo {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--header-bg);
+    backdrop-filter: blur(16px) saturate(1.4);
+    border-bottom: 1px solid var(--line);
+  }
+  .barra {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    height: 64px;
+  }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: auto;
+  }
+  .marca {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+  }
+  .marca b {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    font-size: 15px;
+  }
+  .marca i {
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-top: 3px;
+  }
+  .nav {
+    display: flex;
+    gap: 4px;
+  }
+  .nav-link {
+    position: relative;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-soft);
+    border-radius: 8px;
+    transition:
+      color 0.2s,
+      background 0.2s;
+  }
+  .nav-link:hover {
+    color: var(--text);
+    background: var(--panel-hover);
+  }
+  .nav-link.ativo {
+    color: var(--text);
+  }
+  .nav-link.ativo::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: -13px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--violet));
+    box-shadow: 0 0 12px var(--cyan);
+  }
+  .tema {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--text-soft);
+    cursor: pointer;
+    transition:
+      color 0.2s,
+      border-color 0.2s;
+  }
+  .tema:hover {
+    color: var(--cyan);
+    border-color: var(--cyan);
+  }
+  :global(:root[data-theme='dark']) .icone-sol,
+  :global(:root[data-theme='light']) .icone-lua {
+    display: none;
+  }
+  .nav-link {
+    white-space: nowrap;
+  }
+  @media (max-width: 560px) {
+    .barra {
+      gap: 8px;
+    }
+    .marca {
+      display: none;
+    }
+    .logo {
+      margin-right: auto;
+    }
+    .nav-link {
+      padding: 8px 9px;
+      font-size: 13px;
+    }
+    .nav-link.ativo::after {
+      left: 9px;
+      right: 9px;
+    }
+  }
+</style>
+
+<script>
+  const botao = document.getElementById('alternar-tema');
+  botao?.addEventListener('click', () => {
+    const proximo = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = proximo;
+    try {
+      localStorage.setItem('ghp-theme', proximo);
+    } catch {
+      /* armazenamento indisponível: o tema vale só nesta visita */
+    }
+  });
+</script>
